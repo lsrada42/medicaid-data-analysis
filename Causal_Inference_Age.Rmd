@@ -1,0 +1,333 @@
+---
+title: '*Final Project'
+author: "Gwyneth Wong and Lakshme Srada Srinivas"
+
+date: "3/03/25"
+output:
+  html_document: default
+  header-includes: \usepackage{color}
+fontsize: 12pt
+margin: 1in
+---
+<!--
+This part is a comment: it won't show in your output. You can use comments to remind you to change the name or the lab number, or a version number. You should use lots of them.  Some excellent economists say that about one quarter of your programs should be comments. Comments are most important in your blocks of code (the grey part of the RMarkdown document)
+-->
+
+**Abstract**
+: People often associate old age with a series of health conditions and diseases but does old age necessarily correlate with the number of hospital visits and are there other predictors for the number of yearly hospital visits?
+We attempted to answer this by regressing the number of hospital visits on age and multiple other variables. Our research determined that being old and having more children negatively impacted the number of visits. Having health conditions and being enrolled in the supplemental security income program positively impacted hospital visits. Additionally other factors like gender and income did not appear to impact visits.
+
+```{r setup, echo=FALSE, message=F, warning=F}
+
+#==============================================================================
+#   This chunk will be used for every assignment
+#==============================================================================
+
+  # Clear the working space
+    rm(list = ls())
+
+  #Set working directory
+setwd('/Users/lakshmesrada42/Downloads/')  
+#setwd("/Users/Gwynnie/econ2509")  
+#getwd()
+
+### Load the packages (all must have been installed)
+    library(tidyverse)
+    library(doBy)
+    library(foreign)
+    library(knitr)
+    library(lmtest)
+    library(readstata13)
+    library(sandwich)
+    library(stargazer)
+    library(AER)
+    library(gdata)
+    library(wooldridge)
+    library(openintro)
+
+cse=function(reg){
+  rob=sqrt(diag(vcovHC(reg, type = "HC1")))
+  return(rob)
+}
+```
+
+
+
+```{r data, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+
+# So, we first give an instruction to get the data we want. This chuck of R code is not include in the RMarkdown report because include=FALSE in the setting above. Even if it is not included, it is essential for the R code to know the data before you can plot anything.If you want to include it in the RMarkdown report, you just set it to TRUE.
+
+### Data section: loading data
+
+data("Medicaid1986")
+medi = as.data.frame(Medicaid1986)
+
+#structure of dataset
+str(Medicaid1986)
+
+#checking for null values
+colSums(is.na(medi)) 
+
+#encoding dummy variables
+medi$female = ifelse(medi$gender == 'female', 1, 0)
+medi$old = ifelse(medi$age >= 55, 1, 0)
+medi$ssi = ifelse(medi$program == 'ssi', 1,0)
+```
+## Descriptive Statistics
+```{r summary, echo=FALSE, message=FALSE, warning=FALSE, comment=""}
+
+# descriptive statistics of variables of interest
+stargazer(medi[c("visits", "age", "health1", "access", "income")], type="text", digits=2, summary.stat=c("n", "mean", "median", "sd","min","max"), title="Descriptive Statistics", flip=FALSE, covariate.labels=c("visits", "age", "health1", "access", "income"))
+
+stargazer(medi[c("children", "female","ssi")], type="text", digits=2, summary.stat=c("n", "mean", "median", "sd","min","max"), title="Descriptive Statistics", flip=FALSE, covariate.labels=c("children", "gender", "program type"))
+
+```
+
+***From the above tables we can infer the following:***
+
+**For Visits:**
+
+- The mean number of visits is 1.93, while the median is 1, indicating that the distribution is right-skewed (some individuals have significantly more visits).
+- The standard deviation is 3.35, showing a relatively high variation in the number of visits.
+- The minimum value is 0, and the maximum is 50, suggesting that some individuals do not visit at all, while others have frequent visits.
+
+**For Age:**
+
+- The mean age is 55.21 years, and the median is 66 years, suggesting a left-skewed distribution.
+- The standard deviation is 24.96, indicating a broad variation in ages.
+- The minimum age is 16 years, and the maximum is 105 years, highlighting a diverse age range.
+
+**For Income:**
+
+- The mean income is 8.19, while the median is 7.99, showing a nearly symmetric distribution.
+- The standard deviation is 3.63, indicating moderate variation in income.
+- The minimum value is 0.50, and the maximum is 17.50, suggesting a wide income range.
+
+**For Health1:**
+
+- The mean health score is approximately 0, and the median is -0.32, indicating a balanced distribution around zero.
+- The standard deviation is 1.44, reflecting moderate variability in health scores.
+- The minimum value is -2.26, while the maximum is 7.22, showing a broad range of health levels.
+
+**For Access:**
+
+- The mean access score is 0.40, and the median is 0.42, showing that the data is almost symmetrically distributed.
+- The standard deviation is 0.18, indicating low variability.
+- The minimum value is 0.00, and the maximum is 1.00, suggesting a binary or percentage-based scale.
+
+**For Children:**
+
+- The mean number of children is 1.31, while the median is 1, indicating that most individuals have one child.
+- The standard deviation is 1.51, suggesting considerable variation in the number of children.
+- The minimum value is 0, and the maximum is likely higher, indicating that some individuals have no children while others have multiple.
+
+**For Gender:**
+
+- The mean value for the binary variable female is 0.85, meaning that 85% of the individuals in the dataset are female.
+- The median is 1, which aligns with the fact that the majority of the dataset consists of females.
+
+**For Program:**
+
+- The mean value for ssi is 0.51, indicating that 51% of individuals in the dataset are part of the Supplementary Security Income (SSI) program.
+- This suggests that the data is equally distributed, with half of the sample population belonging in each category.
+
+
+## Graphs
+```{r graph, echo=FALSE, message=FALSE, warning=FALSE, comment=""}
+
+# histograms to check distribution of age and visits
+ggplot(medi) + geom_histogram(aes(x=age), col="darkturquoise",binwidth = 2) + 
+        labs(title = "age", x="age" )
+
+ggplot(medi) + geom_histogram(aes(x=visits), col="darkturquoise",binwidth = 2) + 
+        labs(title = "visits", x="visits" )
+```
+
+**Based on the Age bar plot, we can infer the following:**
+- The bar plot for age has two distinct peaks that show that most people who responded to the survey lie between 20 to 34 years old and 65 to 90 years old. This means that there is a lack of middle aged people within the surveyed population.
+
+**Based on the Visits bar plot, we can infer the following:**
+- The bar plot shows that the mode is 0 visits with the number of visits consistently decreasing until 5 visits. After 5 visits, the number of people who visited more times fluctuates with outliers at 24, 48, and 50 visits. 
+
+```{r graph 2, echo=FALSE, message=FALSE, warning=FALSE, comment=""}
+# Scatterplot of number of hospital visits vs. age 
+ggplot(medi, aes(x=age, y=visits)) + geom_point(col="deeppink1") + 
+        labs(title = "Visits vs Age", x = "age", y = "visits") +
+        stat_smooth(method=lm, col = "darkturquoise", se=FALSE)
+
+
+```
+
+**Based on the Visits vs. Age scatter plot, we can infer the following:**
+
+- The regression line suggests a slight upward trend, indicating a weak positive correlation between age and the number of hospital visits. As individuals get older, they may be slightly more likely to visit the hospital.
+- The slope is almost flat, suggesting that age alone does not strongly predict hospital visits.
+- There are several outliers, with a few individuals having more than 20 hospital visits, and even a case where the number of visits reaches 50. These extreme values might be influencing the regression trend.
+- Most data points are clustered near 0 visits, across all age groups, suggesting that many individuals do not frequently visit hospitals.
+- The distribution of hospital visits appears to be scattered across different age groups, without a clear trend. Other factors such as health conditions, income, or healthcare access might play a more significant role in determining hospital visit frequency.
+
+```{r subset,echo=FALSE, message=FALSE, warning=FALSE, comment="" }
+
+#creating subset without outlier
+medi_small = subset(medi, visits < 40)
+
+medi_small$age_scaled <- scale(medi_small$age)
+
+```
+
+
+## Regression Table 1
+```{r regression 1, echo=FALSE, message=FALSE, warning=FALSE, comment=""}
+
+#r0 -> regression of visits on age
+r0=lm(visits ~ age, data = medi)
+
+#r1 -> regression of visits on binary variable 'old'
+r1=lm(visits ~ old, data = medi)
+
+#r1 -> regression of visits on old + health1
+r2=lm(visits ~ old+health1, data = medi)
+
+#r3 -> regression of visits on old + health1 + children
+r3=lm(visits ~ old+health1+children, data = medi)
+
+#r4 -> regression of visits on old + health1 + children + program
+r4=lm(visits ~ old+health1+children+program, data = medi)
+
+#r5 -> regression without outliers in visits
+r5 =lm(visits ~ old+health1+children+program, data = medi_small)
+
+#r6 -> regression of visits on old + health1 + children + program + quadratic term of age
+r6=lm(visits ~ age+health1+children+program+I(age_scaled^2), data = medi_small)
+
+#r7 -> regression of visits on binary variable old + health1 + children + program + age^2 + cubic term of age
+r7=lm(visits ~ age+health1+children+program+I(age_scaled^2)+I(age_scaled^3), data = medi_small)
+
+  
+stargazer(r0,r1,r2,r3,r4,r5,r6,r7, se=list(cse(r0),cse(r1), cse(r2), cse(r3), cse(r4), cse(r5), cse(r6),cse(r7)),
+          title="variables on visits", type="text",
+          star.cutoffs = NA, df=FALSE, digits=3)
+
+```
+
+**From the above regression table we can infer the following:**
+
+- In Model 1, we regress visits on age. The coefficient on age is 0.013 with a small effect size. This suggests a mild positive relationship between age and the number of visits. For every 1 year increase in age, the number of doctor  visits increases by 0.013 times. The coefficient on age is statistically significant (t-stat: 0.013/0.004 = 3.25), therefore proving that age does have an effect on number of hospital visits. Due to the distribution of the data as we saw before, we will explpore converting 'age' to a binary variable 'old' (1>50, 0<50) and checking if sherely being over 50 years of has an effect on visits. The R-squared is 0.009 indicating that age explains 0.9% of the variation in the number of visits. 
+
+- In model 2, while regressing the binary variable 'old' on visits, the coefficient of 0.600 is statistically significant (t-stat: 0.6/0.212 = 2.83) and we can conclude that individuals over 50 years of age visit the doctor 0.6 times more than those who are not. The R-squared here is 0.008 meaning that this model explains 0.8% of the variation is number of doctor visits. We will continue to explore the effect of being old on number of hospital visits by adding other regressors.
+
+- In model 3, upon adding health1, the coefficient on old drops, indicating that its effect reduces and there was omitted variable bias previously. Since health affect visits positively and there was an upward bias previously, we can say that age is positively correlated with health condition. Holding health1 constant, there difference in the average number of doctor visits between people over 50 and younger than 50 is 0.568 times. This coefficient is statistically significant (t-stat: 0.568/0.205 = 2.77), confirming our hypothesis that there is difference in number of visits between old and young individuals. The coefficient on health is statistically significant as well (t-stat:0.624/0.098 = 6.37). Hence, holding old constant, for every 1 unit increase in health1, the number of visits increase by 0..624 times. Adding health significantly improves the fit of the model 0.078, meaning that health condition and age together explain 7.8% of variation in the number of visits. 
+
+- In model 4, upon adding the number of children as an additional regressor, we can see that the effect of being old further reduces to 0.202 and becomes negative, suggesting that there was an upward bias previously and being old is negatively correlated with the number of children an individual has. However, adding children as an additional variable affects the statistical significance of 'old' and here the coefficient estimate being statistically insignificant at 5% level (t-stat: 0.202/0.272 = 0.72), we cannot say that there is a difference in the number of hospital visits between old and young people. The estimates on health1 and children are statistically significant - therefore we can infer that holding other regressors constant, for every 1 unit increase in health1, the number of hospital visits increase by 0.622 times; when the number of children an individual has increases by 1, the number of hospital visits falls by 0.198. The adjusted r-squared slightly increases by 0.004, indicating that this model explains 8.2% of the variation in the visits made to the doctor. But since the coefficient of interest is not statistically significant, we can add other regressors to explore the effect of age on visits further. 
+
+- In model 5, we add another regressor - the type of program they are enrolled in, specifically 'SSI' (Supplementary Security Income. Upon adding this, the coefficient estimate on 'old' drops further and becomes negative and the ssi affects visits positively, implying again that there was an upward bias previously and being old is positively correlated with being enrolled in the SSI program. The coefficient estimate on old remains statistically significant (t-stat: -1.446/0.385 = -3.76) at 5% level, and hence we can conclude that the difference in doctor visits between older and younger individuals in this case is -1.446 or in other words - older individuals visit the doctor 1.446 times lesser than younger individuals, while controlling for the variables of health1, children and ssi. The slope estimates on these additional variables are also statistically significant at 5% level and therefore : holding all other regressor constant, for every 1 unit increase in health1, there is a 0.632 visit increase in the number of doctor visits; holding all other regressors constant, for every 1 child increase in the number of childrens had by an individual, there is 0.187 decrease in the number of doctor visits; holding all other regressors constant, there difference in the number of visits between people who are enrolled in the ssi program and those who are not is 1.697. 
+
+- In model 6, we regressed visits on the same variables as before, but upon removing the outliers. The slope estimates on all the variables are statistically significant at the 5% level here:Being classified as "old" decreases the number of doctor visits by 1.187, holding all other regressors constant. For every 1 unit increase in health1, the number of doctor visits increases by 0.548, holding all else constant. Having an additional child reduces the number of doctor visits by 0.134, keeping other factors fixed.
+The difference in the number of visits between individuals enrolled in the SSI program and ADFC program is 1.543 visits, holding all other variables constant. Removing outliers from the dataset improves the model's performance in a few ways. Firstly, the Adjusted R² increases from 0.083 in Model 5 to 0.105, indicating that the refined model explains a higher proportion of variance in the dependent variable. Additionally, the Residual Standard Error decreases significantly from 3.212 to 2.467, suggesting a better fit and reduced overall prediction error after removing outliers. 
+
+- In model 7 and model 8, we add quadratic and cubic terms of age along with the linear term of age and other control variables, to check if these non-linearities change the impact of age or other variables included, on the number of doctor visits. In other words, we want to check if there are diminishing or increasing returns in terms of age and the corresponding effect on visits. In order to check the validity of these models we can conduct the F-test and the t-test: 
+
+**F-test to check if cubic specification is better than linear specification**
+```{r Ftest,echo=FALSE, message=FALSE, warning=FALSE, comment=""}
+
+#F-test & p-value
+lht(r7, c("I(age_scaled^2) = 0", "I(age_scaled^3) = 0"), white.adjust="hc1")
+```
+
+- With the p-value being higher than 0.05, we can conclude that the cubic specification is not better than the linear specification due to absence of statistical significance. In model 7, since the t-stat (0.14) on I(age^2) is not statistically significant, we can conclude that the quadratic is not better than the linear specification. 
+
+- Our findings suggest that outliers may have been distorting some of the relationships, especially the magnitude of the 'old' coefficient.Given these improvements, Model 6 is a better choice than Model 5. Therefore, we can confirm that model 6 is our baseline specification model. We have chosen this as our baseline since it effectively controls for important confounders such as health condition, number of children, and SSI enrollment, mitigating omitted variable bias. The declining significance of the "Old" variable across models highlights how these factors mediate the relationship between age and doctor visits. This model demonstrates strong statistical significance, with all key regressors being significant at the 5% level and the highest adjusted R² among all models, indicating superior explanatory power. The findings suggest that merely being older does not necessarily increase hospital visits; rather, factors such as health status, family structure, and financial support programs play a crucial role. For instance, the number of children an individual has is negatively correlated with hospital visits, likely because individuals with more children may prioritize caregiving responsibilities over seeking medical attention or may have healthier lifestyles influenced by family dynamics. Additionally, enrollment in the Supplemental Security Income (SSI) program is positively associated with doctor visits, suggesting that financial assistance enables beneficiaries to afford and access medical care more frequently. The F-test results further confirm that introducing squared and cubic age terms does not significantly improve the model, reinforcing the validity of the linear specification. Therefore, Model 6 provides a clearer and more unbiased estimate of the effect of age on doctor visits, demonstrating that variations in healthcare utilization are largely influenced by health conditions, family responsibilities, and financial support rather than age alone.
+
+
+## Regression Table 2
+```{r table2, echo=FALSE, message=FALSE, warning=FALSE, comment=""}
+
+# Here you write your stargazer command 
+r7=lm(visits ~ old+health1+children+program+I(children^2), data = medi_small)
+r8=lm(visits ~ old+health1+children+program+access, data = medi_small)
+r9=lm(visits ~ old+health1+children+program+access+female, data = medi_small)
+r10=lm(visits ~ old+health1+children+program+income, data = medi_small)
+r11=lm(visits ~ old+health1+children+program+access+female+female*income, data = medi_small)
+
+stargazer(r7,r8,r9,r10,r11, se=list(cse(r7),cse(r8), cse(r9), cse(r10), cse(r11)),
+          title="variables on visits", type="text",
+          star.cutoffs = NA, df=FALSE, digits=3)
+
+```
+**From the above regression table we can infer the following:**
+
+- This table uses regression 6 from the prior table as a baseline to continue to add more variables to test for significance.
+
+- In model 1, we added the children squared regressor because we expected that having a larger number of children may exponentially affect the number of visits. 
+The coefficients on children and children^2 means that on average, holding everything else held constant, an increase in children by 1 decreases the number of hospital visits by 0.113 while an increase of 1 in children^2 decreases the number of hospital visits by 0.004. However, the t-stat on children^2 is -0.113/0.14 = -0.807 which is not statistically significant at the 5% level meaning that we cannot conclude that children^2 has an impact on the number of hospital visits. Additionally, the coefficient on old does not change with the addition of children^2 implying that there is no omitted variable bias. The adjusted R^2 is 0.105 which means that 10.5% of the variation in the number of hospital visits can be explained by the regression.
+
+- In model 2, after concluding that the children squared model was not a good fit, we dropped the children^2 regressor and added the binary variable for access to healthcare expecting that having access to healthcare would positively impact hospital visits.
+The coefficient on access implies that on average, holding everything else constant, having access to healthcare increases the number of hospital visits by 0.39. The coefficient on old increases from –1.187 to -1138 implying a possible downward omitted variable bias between old and access. However the t-stat on access is 0.385/0.477 = 0.807 which is not statistically significant at the 5% level meaning that we cannot conclude that having access to healthcare impacts the number of hospital visits. The adjusted R^2 is 0.105 which means that 10.5% of the variation in the number of hospital visits can be explained by the regression.
+
+- In model 3, we added a binary variable for females (1 if true, 0 if false) to determine whether or not gender has an impact on the number of hospital visits. The coefficient on female means that on average, holding everything else constant, being female increases the number of hospital visits by 0.316. While the coefficient on old changes a little, we would not suspect omitted variable bias because gender and age are unlikely to be correlated. The t-stat on female is 0.316/0.209 = 1.512 which is not statistically significant at the 5% level meaning that we cannot conclude that being female impacts the number of hospital visits and there is no difference in the number of visits between males and females. The adjusted R^2 is 0.106 which means that 10.6% of the variation in the number of hospital visits can be explained by the regression.
+
+- In model 4, we removed the variables access and female because they were not statistically significant and we added a variable for income expecting that higher level of incomes would be associated with more hospital visits. The coefficient on income means that on average, holding everything else constant, an increase in income by $1000 increases the number of hospital visits by 0.032. The addition of income to the baseline regression changed the coefficient on old from -1.187 to -1.1.173 which is a negligible difference but could suggest downward omitted variable bias in which old and income are positively correlated. However, the t-stat is 0.032/0.025 = 1.28 which is not statistically significant at the 5% level meaning that we cannot conclude that income has an effect on the number of hospital visits. The adjusted R^2 is 0.106 which means that 10.6% of the variation in the number of hospital visits can be explained by the regression.
+
+- In model 5, the regression contained the baseline regressors as well as access, female, income, and a newly added interaction term between female and income. The addition of the interaction term caused the coefficients on female and income to increase slightly while the coefficient on the interaction term was negative. This model predicted that holding everything else constant, being female would increase the number of hospital visits by 0.492 while every $1000 increase in income would increase the number of visits by (0.048-0.018) 0.03. However, the t-stat on female*income is -0.018/0.059 = -0.305 which is not statistically significant at the 5% level meaning that we cannot conclude that being female and the income has an effect on the number of hospital visits. The adjusted R^2 is 0.106 which means that 10.6% of the variation in the number of hospital visits can be explained by the regression.
+
+- To summarize the results of the regressions in table 2, none of the newly introduced regressors proved to be significant predictors of the number of hospital visits.
+
+### Additional Exploration Regression Table
+```{r regression 1.5, echo=FALSE, message=FALSE, warning=FALSE, comment=""}
+#maybe add age^2
+medi_young = subset(medi_small, age < 55)
+medi_old = subset(medi_small, age >= 55)
+
+
+# Here you write your stargazer command 
+r1=lm(visits ~ age+health1+children, data = medi_young)
+
+r2=lm(visits ~ age+health1+children, data = medi_old)
+r3=lm(visits ~ age+health1+children+program, data = medi_old)
+
+stargazer(r1,r2,r3, se=list(cse(r1), cse(r2), cse(r3)),
+          title="age subsets", type="text",
+          star.cutoffs = NA, df=FALSE, digits=3)
+
+
+```
+**From the above regression table we can infer the following:**
+
+- In an expansion of our tests, because the age bar graph showed two distinct peaks, we decided to run the baseline regression (visits on age, health, children, and programssi) for two separate subsets containing the instances for people 55 and older and younger than 55. However, we discovered that only older people were in (qualified for) the SSI program and as such, we ran one regression for each age group with only age, health, and children. Additionally, we ran one more regression for older people with the program dummy variable.
+
+- For the two regressions without the SSI program, we found that age is no longer statistically significant. For younger people, on average and holding everything constant, an increase of 1 year for age decreases visits by 0.017 while for older people, it increases visits by 0.007. However, the t-stats for each of these are (-0.017/0.014 = -1.21) and (0.007/0.013 = 0.54) respectively meaning that neither coefficient is significant at the 5% level. Health1 continues to remain a significant indicator of the number of hospital visits.
+
+- For people under 55, on average and holding everything else constant, an increase in the number of children by 1 decreased the number of hospital visits by 0.178 while for people 55 or older, it decreased the number of visits by 0.062. What was interesting is that the t-stat for children for the younger subset was -0.178/0.076 = -2.34 which is statistically significant at the 5% level but the t-stat for the older subset was -0.062/0.086 = 0.72 which is not statistically significant. This would make sense when considering that for younger people, their children are more likely to be dependents than for older people where their children are more likely to be independent and not a direct influence on the older person’s life.
+
+- When adding the SSI program for older people, the coefficient on age changes from 0.007 to -0.003 but remains statistically insignificant. However, as seen in the first regression table, being in the Supplemental Security Income program increases the number of hospital visits. For people 55 and older, on average and holding everything constant being in the SSI program increases the number of hospital visits by 1.678. The t-stat is 1.678/0.435 = 3.86 which is significant at the 5% level.
+
+- To sum this section up, we found that by separating the age groups to study them individually, age is no longer statistically significant for this database and the age groups show different patterns in what variables are statistically significant.
+
+## Conclusion
+
+- Our analysis explored the effect of age on hospital visits, beginning with a baseline model (Model 6) that controlled for key confounders such as health condition, number of children, and enrollment in the Supplemental Security Income (SSI) program. This model revealed that older individuals visit the doctor less frequently than younger individuals once these controls were accounted for, correcting an initial upward bias in earlier models. Additionally, health condition was a strong positive predictor of visits, while having more children reduced doctor visits, likely due to competing caregiving responsibilities or lifestyle differences.
+
+- To further refine our understanding, we introduced alternative functional forms and additional regressors, but none proved to be statistically significant. The inclusion of quadratic and cubic age terms failed to improve model fit, suggesting that the effect of age on hospital visits does not follow a non-linear trajectory. This result aligns with the intuition that while health risks increase with age, older individuals may also be more health-conscious, better insured, or proactive in managing chronic conditions, thereby moderating extreme fluctuations in visit frequency. Similarly, the squared children term did not significantly impact visits, indicating that the effect of family size is likely linear—having more children does reduce visits, but not at an accelerating rate.
+
+- Further, access to healthcare, gender, and income were introduced to test whether socioeconomic factors influence hospital visits. However, their lack of statistical significance suggests that access to healthcare may already be widely available across the population, reducing disparities in visit frequency. Likewise, income was not a strong predictor, possibly because government assistance programs or employer-sponsored insurance reduce direct cost barriers to healthcare. The insignificance of gender implies that men and women may have similar healthcare-seeking behaviors once health conditions are accounted for, contrary to the expectation that women would visit the doctor more often due to preventive care. Finally, even when introducing an interaction between gender and income, there was no meaningful effect, suggesting that the relationship between financial resources and healthcare utilization does not differ significantly by gender.
+
+- Recognizing two distinct peaks in the age distribution, we conducted an additional test by running the baseline regression separately for individuals younger than 55 and those 55 and older. In these subgroup regressions (excluding SSI), age was no longer statistically significant. For younger individuals, an additional year of age decreased hospital visits slightly (-0.017), while for older individuals, it increased visits slightly (0.007), but neither effect was statistically significant. Health condition remained a strong predictor in both groups, reinforcing its primary role in explaining visit frequency. Interestingly, the effect of children differed by age group—for younger individuals, having more children significantly reduced hospital visits, likely due to caregiving responsibilities, whereas for older individuals, the effect was smaller and not statistically significant, as their children were more likely to be independent.
+
+- When we reintroduced SSI enrollment for older individuals, the effect of age remained insignificant, but being in the SSI program significantly increased hospital visits by 1.678 (p < 0.05). This reinforces the earlier finding that financial support plays a crucial role in healthcare access for older populations.
+
+- Overall, the findings reinforce that age alone is not a primary driver of hospital visits. Instead, health status, financial support (SSI), and family structure play more influential roles. The results suggest that while age correlates with higher medical needs, other social determinants—such as financial assistance and caregiving responsibilities—mediate its impact. The most reliable model remains the baseline specification (Model 6), where age influences doctor visits primarily through its correlation with health conditions and economic factors rather than as an independent predictor.
+
+### Internal and External Validity
+**Internal Validity**
+
+- Omitted variable bias - there are many factors that can explain why people need to visit the hospital that can be related to age that we were unable to control for such as levels of fitness and amount of sleep. As such, the possibility of omitted variable bias remains.
+
+- Sample selection bias and missing data - The data is missing the age group between 58 and 63 year olds and there isn’t a consistent amount of data for 45 to 65 year olds. Additionally, 85% of the respondents were female despite populations typically being a 50/50 split. With all this said, there could possibly be sample selection bias within this dataset.
+
+**External Validity**
+
+- This data is specific to Santa Barbara and Ventura county and the data is specific to 1986 and so the results of this data would likely be difficult to apply to other populations.
+
+
+
+
