@@ -1,6 +1,5 @@
 ---
-title: '*Final Project'
-author: "Gwyneth Wong and Lakshme Srada Srinivas"
+title: '*Exploring the effect of age on number of visits to the doctor'
 
 date: "3/03/25"
 output:
@@ -9,9 +8,7 @@ output:
 fontsize: 12pt
 margin: 1in
 ---
-<!--
-This part is a comment: it won't show in your output. You can use comments to remind you to change the name or the lab number, or a version number. You should use lots of them.  Some excellent economists say that about one quarter of your programs should be comments. Comments are most important in your blocks of code (the grey part of the RMarkdown document)
--->
+
 
 **Abstract**
 : People often associate old age with a series of health conditions and diseases but does old age necessarily correlate with the number of hospital visits and are there other predictors for the number of yearly hospital visits?
@@ -19,11 +16,7 @@ We attempted to answer this by regressing the number of hospital visits on age a
 
 ```{r setup, echo=FALSE, message=F, warning=F}
 
-#==============================================================================
-#   This chunk will be used for every assignment
-#==============================================================================
-
-  # Clear the working space
+# Clear the working space
     rm(list = ls())
 
   #Set working directory
