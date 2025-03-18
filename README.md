@@ -1,8 +1,4 @@
-<<<<<<< Updated upstream
-##Effect of Age on Hospital Visits - Econometrics Project
-=======
 ### Effect of Age on Hospital Visits - Econometrics Project
->>>>>>> Stashed changes
 
 # Project Overview:
 This project analyzes the relationship between age and hospital visits, using econometric models to explore whether age alone is a significant predictor of healthcare utilization. Our study controls for confounding factors such as health conditions, income, gender, access to healthcare, and family structure.
