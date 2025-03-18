@@ -19,7 +19,7 @@ We attempted to answer this by regressing the number of hospital visits on age a
 # Clear the working space
     rm(list = ls())
 
-  #Set working directory
+#Set working directory
 setwd('/Users/lakshmesrada42/Downloads/')  
 #setwd("/Users/Gwynnie/econ2509")  
 #getwd()
@@ -48,8 +48,6 @@ cse=function(reg){
 
 ```{r data, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 
-# So, we first give an instruction to get the data we want. This chuck of R code is not include in the RMarkdown report because include=FALSE in the setting above. Even if it is not included, it is essential for the R code to know the data before you can plot anything.If you want to include it in the RMarkdown report, you just set it to TRUE.
-
 ### Data section: loading data
 
 data("Medicaid1986")
@@ -66,6 +64,7 @@ medi$female = ifelse(medi$gender == 'female', 1, 0)
 medi$old = ifelse(medi$age >= 55, 1, 0)
 medi$ssi = ifelse(medi$program == 'ssi', 1,0)
 ```
+
 ## Descriptive Statistics
 ```{r summary, echo=FALSE, message=FALSE, warning=FALSE, comment=""}
 
@@ -143,6 +142,7 @@ ggplot(medi) + geom_histogram(aes(x=visits), col="darkturquoise",binwidth = 2) +
 - The bar plot shows that the mode is 0 visits with the number of visits consistently decreasing until 5 visits. After 5 visits, the number of people who visited more times fluctuates with outliers at 24, 48, and 50 visits. 
 
 ```{r graph 2, echo=FALSE, message=FALSE, warning=FALSE, comment=""}
+
 # Scatterplot of number of hospital visits vs. age 
 ggplot(medi, aes(x=age, y=visits)) + geom_point(col="deeppink1") + 
         labs(title = "Visits vs Age", x = "age", y = "visits") +
@@ -161,7 +161,7 @@ ggplot(medi, aes(x=age, y=visits)) + geom_point(col="deeppink1") +
 
 ```{r subset,echo=FALSE, message=FALSE, warning=FALSE, comment="" }
 
-#creating subset without outlier
+#creating subset without outliers
 medi_small = subset(medi, visits < 40)
 
 medi_small$age_scaled <- scale(medi_small$age)
@@ -235,7 +235,7 @@ lht(r7, c("I(age_scaled^2) = 0", "I(age_scaled^3) = 0"), white.adjust="hc1")
 ## Regression Table 2
 ```{r table2, echo=FALSE, message=FALSE, warning=FALSE, comment=""}
 
-# Here you write your stargazer command 
+# 2nd regression
 r7=lm(visits ~ old+health1+children+program+I(children^2), data = medi_small)
 r8=lm(visits ~ old+health1+children+program+access, data = medi_small)
 r9=lm(visits ~ old+health1+children+program+access+female, data = medi_small)
@@ -247,6 +247,7 @@ stargazer(r7,r8,r9,r10,r11, se=list(cse(r7),cse(r8), cse(r9), cse(r10), cse(r11)
           star.cutoffs = NA, df=FALSE, digits=3)
 
 ```
+
 **From the above regression table we can infer the following:**
 
 - This table uses regression 6 from the prior table as a baseline to continue to add more variables to test for significance.
@@ -272,7 +273,7 @@ medi_young = subset(medi_small, age < 55)
 medi_old = subset(medi_small, age >= 55)
 
 
-# Here you write your stargazer command 
+# regression on subset of data
 r1=lm(visits ~ age+health1+children, data = medi_young)
 
 r2=lm(visits ~ age+health1+children, data = medi_old)
@@ -284,6 +285,7 @@ stargazer(r1,r2,r3, se=list(cse(r1), cse(r2), cse(r3)),
 
 
 ```
+
 **From the above regression table we can infer the following:**
 
 - In an expansion of our tests, because the age bar graph showed two distinct peaks, we decided to run the baseline regression (visits on age, health, children, and programssi) for two separate subsets containing the instances for people 55 and older and younger than 55. However, we discovered that only older people were in (qualified for) the SSI program and as such, we ran one regression for each age group with only age, health, and children. Additionally, we ran one more regression for older people with the program dummy variable.
