@@ -1,4 +1,4 @@
-*.Rmd linguist-detectable
 *.R linguist-detectable
+*.Rmd linguist-vendored
 *.html linguist-vendored
 
